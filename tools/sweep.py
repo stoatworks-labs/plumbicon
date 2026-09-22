@@ -13,11 +13,11 @@ actually changed.
 
 ------------------------------------------------------------------ the traps
 
-**Seven controls are PINNED by Type, and that is the design rather than a
+**Eight controls are PINNED by Type, and that is the design rather than a
 defect.** A tube type is an override, not a write (see `source/Tubes.h`), so
 while one is selected the operator's Transfer Gamma slider moves and the
-picture does not. Every one of those seven therefore carries `Type=0` --
-Custom -- in its context. Without it this file would report seven dead
+picture does not. Every one of those eight therefore carries `Type=0` --
+Custom -- in its context. Without it this file would report eight dead
 controls, correctly, and bury any real failure among them.
 
 **Burn is measured in HUNDREDS of fields.** Its whole point is that it is
@@ -57,6 +57,7 @@ CONTEXT = {
     # truth. See the docstring.
     "Transfer Gamma": ["Type=0"],
     "Dark Current": ["Type=0"],
+    "Target Capacity": ["Type=0"],
     "Lag Amount": ["Type=0"],
     "Halo": ["Type=0"],
 

@@ -95,13 +95,40 @@ float DarkCurrentFromParam( float p );
 // Lag
 //---------------------------------------------------------------------------
 
-/// Multiplier on the beam current. 1.0 at the null, 1/25 at the top.
+/// Multiplier on the beam current. Exactly 1.0 at the null, 1/9 at the top.
 ///
 /// Lag Amount and Beam Current multiply into one number and that is
 /// deliberate: they are the same physical quantity reached from two
 /// directions. Beam Current is what the tube IS -- it is what `Type` moves --
 /// and Lag Amount is how much of it the operator wants today.
+///
+/// The range is 9:1 rather than something more dramatic because the beam
+/// current is ALSO the ceiling on the signal: pushing it far below the charge
+/// a white scene makes does not give a longer tail, it clips the picture to a
+/// sliver of its range and then lifts it back with gain. The length of the
+/// tail is `Target Capacity / Beam Current`, and capacity is the control for
+/// it.
 float LagScaleFromParam( float p );
+
+/// The video gain the rest of the chain is lined up with.
+///
+/// Not a control, and deliberately not one. A tube camera is set up by putting
+/// the beam current where it just handles peak white and then setting the
+/// video amplifier so that peak signal is peak white. Without that second half
+/// the Beam Current control does two jobs at once -- it decides how much lag
+/// there is AND how bright the picture is -- and turning the lag up hands back
+/// a dim grey picture rather than a smeared one. A camera does not behave that
+/// way and neither does this.
+///
+/// So: the signal is divided by whichever is smaller, the beam current or the
+/// charge a peak-white scene makes. Turning the beam down past peak white then
+/// CLIPS the highlights and LIFTS everything under them, which is exactly what
+/// an over-driven tube does, instead of fading the whole picture out.
+///
+/// It is exactly 1.0 when sensitivity is 1.0, dark current is 0 and the beam
+/// is above both -- which is the pass-through check's setting, and is why that
+/// check can still claim the identity.
+float VideoGain( float photoGain, float dark, float beam );
 
 /// Fraction of the residual charge that leaks away on its own between scans,
 /// per field. The target is not a perfect capacitor; a real one recovers from

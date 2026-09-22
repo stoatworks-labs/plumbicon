@@ -1,8 +1,8 @@
 name: release
 
-# Build the Galvo FFGL plugin for the two platforms Resolume runs on:
-#   - macOS   -> universal (arm64 + x86_64) Galvo.bundle
-#   - Windows -> x64 Galvo.dll (GLEW static-linked via vcpkg)
+# Build the Plumbicon FFGL plugin for the two platforms Resolume runs on:
+#   - macOS   -> universal (arm64 + x86_64) Plumbicon.bundle
+#   - Windows -> x64 Plumbicon.dll (GLEW static-linked via vcpkg)
 # Each ships as a zip; drop the bundle/dll into Resolume's "Extra Effects"
 # folder. Trigger manually (Actions > release > Run workflow) or by pushing a
 # v* tag.
@@ -33,8 +33,8 @@ jobs:
           # so x86_64 is cross-compiled from Apple Silicon rather than built
           # natively. CMAKE_OSX_ARCHITECTURES in CMakeLists.txt does that on
           # its own; there is nothing to set here.
-          - { name: macos-universal, os: macos-14,       artifact: Galvo.bundle }
-          - { name: windows-x86_64,  os: windows-latest, artifact: Galvo.dll }
+          - { name: macos-universal, os: macos-14,       artifact: Plumbicon.bundle }
+          - { name: windows-x86_64,  os: windows-latest, artifact: Plumbicon.dll }
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,7 +46,7 @@ jobs:
       # via tools/verify.sh.
       - name: Configure (macOS)
         if: runner.os == 'macOS'
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DGALVO_BUILD_TOOLS=OFF
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DPLUMBICON_BUILD_TOOLS=OFF
 
       # --- Windows: GLEW comes from vcpkg, static-linked (static-md keeps the
       #     CRT dynamic so the plugin matches the host) so the .dll has no
@@ -56,7 +56,7 @@ jobs:
         run: >
           cmake -B build -A x64
           -DCMAKE_BUILD_TYPE=Release
-          -DGALVO_BUILD_TOOLS=OFF
+          -DPLUMBICON_BUILD_TOOLS=OFF
           -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
 
@@ -78,14 +78,14 @@ jobs:
         run: |
           mkdir -p out
           if [ "${{ runner.os }}" = "macOS" ]; then
-            cp -R "build/Galvo.bundle" "out/Galvo.bundle"
+            cp -R "build/Plumbicon.bundle" "out/Plumbicon.bundle"
             # Actions runs `shell: bash` as `bash -eo pipefail`, so
             # `cmd | grep -q X` FAILS when grep FINDS its match: grep exits at
             # once, the writer takes SIGPIPE, and pipefail reports the pipeline
             # as failed -- failing the release on a correct binary. It is
             # output-size dependent, so it bites the biggest artefact first.
             # Captured and matched with `case` instead.
-            __archs=$( lipo -archs "out/Galvo.bundle/Contents/MacOS/Galvo" )
+            __archs=$( lipo -archs "out/Plumbicon.bundle/Contents/MacOS/Plumbicon" )
             echo "architectures: $__archs"
             case "$__archs" in
               *x86_64*) ;;
@@ -95,13 +95,13 @@ jobs:
               *arm64*) ;;
               *) echo "expected arm64, got: $__archs"; exit 1 ;;
             esac
-            __symbols=$( nm -gU "out/Galvo.bundle/Contents/MacOS/Galvo" )
+            __symbols=$( nm -gU "out/Plumbicon.bundle/Contents/MacOS/Plumbicon" )
             case "$__symbols" in
               *_plugMain*) ;;
               *) echo "expected _plugMain -- the bundle would contain no plugins"; exit 1 ;;
             esac
           else
-            cp "build/Release/Galvo.dll" "out/Galvo.dll"
+            cp "build/Release/Plumbicon.dll" "out/Plumbicon.dll"
           fi
           ls -R out
 
@@ -110,9 +110,9 @@ jobs:
         run: |
           cd out
           if command -v 7z >/dev/null 2>&1; then
-            7z a "../galvo-${{ matrix.name }}.zip" ./*
+            7z a "../plumbicon-${{ matrix.name }}.zip" ./*
           else
-            zip -r "../galvo-${{ matrix.name }}.zip" ./*
+            zip -r "../plumbicon-${{ matrix.name }}.zip" ./*
           fi
 
       - name: Disk image (macOS)
@@ -125,16 +125,16 @@ jobs:
         # half of users.
         run: |
           source scripts/release-lib.sh
-          rl_init "Galvo" galvo "${{ steps.ver.outputs.version }}" \
-            com.stoatworks.galvo "$GITHUB_WORKSPACE"
+          rl_init "Plumbicon" plumbicon "${{ steps.ver.outputs.version }}" \
+            com.stoatworks.plumbicon "$GITHUB_WORKSPACE"
           cp README.md out/ 2>/dev/null || true
-          rl_adhoc_sign "out/Galvo.bundle"
+          rl_adhoc_sign "out/Plumbicon.bundle"
           rl_dmg "${{ matrix.name }}" out
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: galvo-${{ matrix.name }}
+          name: plumbicon-${{ matrix.name }}
           path: |
             *.zip
             *.dmg
@@ -164,8 +164,8 @@ jobs:
           source scripts/release-lib.sh
           version="${GITHUB_REF_NAME#v}"
           case "$version" in [0-9]*) ;; *) version="0.0.0" ;; esac
-          rl_init "Galvo" galvo "$version" com.stoatworks.galvo "$PWD/installers"
-          zip="$(find artifacts -name "galvo-windows-x86_64.zip" | head -1)"
+          rl_init "Plumbicon" plumbicon "$version" com.stoatworks.plumbicon "$PWD/installers"
+          zip="$(find artifacts -name "plumbicon-windows-x86_64.zip" | head -1)"
           if [ -z "$zip" ]; then echo "no Windows artefact, nothing to do"; exit 0; fi
           stage="$RUNNER_TEMP/stage-win"
           rm -rf "$stage"; mkdir -p "$stage"
@@ -178,7 +178,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: galvo-windows-installer
+          name: plumbicon-windows-installer
           path: installers/*
           if-no-files-found: warn
 

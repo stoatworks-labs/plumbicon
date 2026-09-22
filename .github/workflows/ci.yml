@@ -30,33 +30,44 @@ jobs:
           cmake -B build
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_OSX_ARCHITECTURES=arm64
-          -DGALVO_BUILD_TOOLS=ON
+          -DPLUMBICON_BUILD_TOOLS=ON
 
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      - name: The checks that need no GPU
-        # A hosted macOS runner has no accelerated GL context, so these are the
-        # checks that run there: the contour tracer, the galvo's step response
-        # and the point budget are all plain C++ with no GL in them at all,
-        # which is most of what this plugin claims. --trace also has an
-        # end-to-end half that needs a context; it skips itself when there is
-        # none rather than failing.
-        run: |
-          ./build/gvtest --step
-          ./build/gvtest --budget
-          ./build/gvtest --trace
+      - name: Parameters, with no GL context at all
+        # `--list` is answered before a context is created, precisely so that
+        # it still works on a runner where creating one fails. It is a real
+        # check: the parameter declaration is where an FFGL plugin most often
+        # goes wrong, and a duplicate or missing name breaks --set and the
+        # sweep without breaking the build.
+        run: ./build/pbtest --list
 
-      - name: The checks that need a GPU
-        # Best effort. The runner falls back to a software rasteriser, which is
-        # slow but correct; if it cannot make a 4.1 core context at all this
-        # step says so and does not fail the build, because that is a fact
-        # about the runner and not about the code. Both run for real in
-        # tools/verify.sh on a machine with a GPU.
+      - name: Every shader, through a real GLSL compiler
+        # The most valuable thing this runner can do. Four of this plugin's six
+        # shaders are ASSEMBLED at run time around the shared target model, so
+        # they exist in no file on disk and a break in them surfaces only as
+        # "the effect does nothing" inside a host. glslc needs no GPU.
+        run: |
+          brew install shaderc
+          tools/verify.sh 2>&1 | sed -n '1,8p'
+
+      - name: The physics, if this runner can make a GL context
+        # Best effort, and the honest reason is in the CI section of AGENTS.md:
+        # EVERY numeric check in this repo renders, because the model lives in
+        # GLSL rather than in C++. A hosted macOS runner has no accelerated GL,
+        # and whether the software fallback can give a 4.1 core context is a
+        # fact about the runner rather than about this code.
+        #
+        # These are NOT waived. They run for real, at two rasters each, in
+        # tools/verify.sh on a machine with a GPU, and that is the gate.
         continue-on-error: true
         run: |
-          ./build/gvtest --energy
-          ./build/gvtest --dwell
+          ./build/pbtest --lag
+          ./build/pbtest --comet
+          ./build/pbtest --capacity
+          ./build/pbtest --burn
+          ./build/pbtest --passthrough
 
       # Uploading is not only for the artefact. This repo has no package
       # manifest, so github-actions is its only Dependabot ecosystem -- and a
@@ -65,6 +76,6 @@ jobs:
       # actually exercises the action being bumped.
       - uses: actions/upload-artifact@v7
         with:
-          name: galvo-macos-arm64
+          name: plumbicon-macos-arm64
           path: build/*.bundle
           if-no-files-found: error

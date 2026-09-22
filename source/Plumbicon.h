@@ -195,7 +195,8 @@ private:
 
 	/// The ParamID each tube type pins, in `tubes::Param` order.
 	static constexpr unsigned int kTubeParamIDs[ plumbicon::tubes::kParamCount ] = {
-		PT_GAMMA, PT_DARK, PT_LAG, PT_BURN_RATE, PT_BURN_RECOVERY, PT_BURN_DEPTH, PT_HALO
+		PT_GAMMA, PT_DARK, PT_CAPACITY, PT_LAG,
+		PT_BURN_RATE, PT_BURN_RECOVERY, PT_BURN_DEPTH, PT_HALO
 	};
 
 	/// `GetTextParameter` hands the host a bare pointer, so the string has to

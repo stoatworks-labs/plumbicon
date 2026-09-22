@@ -130,7 +130,7 @@ vec3 signalOf( vec3 charge, float beam )
 	return min( charge, vec3( beam ) );
 }
 
-//The signal at a point, from whichever buffer is carrying it.
+//The signal at a point, through the video gain.
 //
 //In Frame mode the beam visits every line every field, so the signal is just
 //`min( charge, beam )` and `heldTexture` is bound to the state texture and
@@ -138,13 +138,22 @@ vec3 signalOf( vec3 charge, float beam )
 //what the picture shows between visits is the signal the beam took last time
 //it was there -- which is why that mode, and only that mode, pays for a
 //second pair of buffers.
+//
+//`gain` is the rest of the chain, lined up so that peak signal is peak white.
+//It is not a control and not a fudge: without it Beam Current does two jobs at
+//once, deciding how much lag there is AND how bright the picture is, and
+//turning the lag up hands back a dim grey picture instead of a smeared one. A
+//camera is set up by putting the beam where it just handles peak white and
+//then setting the amplifier so that reads as white. See Controls.h.
+//
+//The held buffer stores the signal UNGAINED, so that moving Sensitivity does
+//not reach back and re-level the field the beam read two fields ago.
 vec3 signalAt( sampler2D stateTexture, sampler2D heldTexture, vec2 at,
-               float beam, int useHeld )
+               float beam, int useHeld, float gain )
 {
-	if( useHeld != 0 )
-		return texture( heldTexture, at ).rgb;
-
-	return signalOf( texture( stateTexture, at ).rgb, beam );
+	vec3 raw = useHeld != 0 ? texture( heldTexture, at ).rgb
+	                        : signalOf( texture( stateTexture, at ).rgb, beam );
+	return raw * gain;
 }
 
 //PCG output mix. Integer, never fract( sin( x ) ): a trigonometric hash
@@ -256,6 +265,7 @@ static const char* const kBrightPreamble = R"(#version 410 core
 uniform sampler2D StateTexture;
 uniform sampler2D HeldTexture;
 uniform float Beam;
+uniform float Gain;
 uniform int UseHeld;
 uniform float Threshold;
 uniform vec2 SourceTexel;///< one FULL-SIZE texel, in uv
@@ -280,7 +290,7 @@ void main()
 		for( int x = 0; x < 4; ++x )
 		{
 			vec2 at = uv + ( vec2( float( x ), float( y ) ) - 1.5 ) * SourceTexel;
-			total += signalAt( StateTexture, HeldTexture, at, Beam, UseHeld );
+			total += signalAt( StateTexture, HeldTexture, at, Beam, UseHeld, Gain );
 		}
 	}
 
@@ -329,6 +339,7 @@ uniform sampler2D WideTexture;  ///< the same, wider; the difference is the halo
 uniform vec2 MaxUV;
 uniform vec2 HalfTexel;
 uniform float Beam;
+uniform float Gain;
 uniform int UseHeld;
 
 uniform float Halation;
@@ -348,7 +359,7 @@ void main()
 	vec2 picture = clamp( uv, HalfTexel, vec2( 1.0 ) - HalfTexel );
 	vec4 source  = texture( InputTexture, picture * MaxUV );
 
-	vec3 signal = signalAt( StateTexture, HeldTexture, uv, Beam, UseHeld );
+	vec3 signal = signalAt( StateTexture, HeldTexture, uv, Beam, UseHeld, Gain );
 
 	//Halation: light that got past the target, scattered in the faceplate and
 	//came back. Added, because that is what scattered light does.

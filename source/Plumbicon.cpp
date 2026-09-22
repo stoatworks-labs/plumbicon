@@ -443,6 +443,11 @@ FFResult Plumbicon::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 
 	const float noise = NoiseFromParam( Effective( PT_NOISE ) );
 
+	//The rest of the video chain, lined up so peak signal is peak white. Not
+	//a control -- see Controls.h -- and exactly 1.0 at the pass-through
+	//settings, which is what lets that check still claim the identity.
+	const float gain = VideoGain( photoGain, dark, beam );
+
 	//---------------------------------------------------------------------
 	// Buffers.
 	//
@@ -556,6 +561,7 @@ FFResult Plumbicon::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 			brightShader.Set( "StateTexture", 0 );
 			brightShader.Set( "HeldTexture", 1 );
 			brightShader.Set( "Beam", beam );
+			brightShader.Set( "Gain", gain );
 			brightShader.Set( "Threshold", threshold );
 			brightShader.Set( "SourceTexel",
 			                  1.0f / static_cast< float >( pictureWidth ),
@@ -624,6 +630,7 @@ FFResult Plumbicon::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 		compositeShader.Set( "MaxUV", maxCoords.s, maxCoords.t );
 		compositeShader.Set( "HalfTexel", halfTexelX, halfTexelY );
 		compositeShader.Set( "Beam", beam );
+		compositeShader.Set( "Gain", gain );
 		compositeShader.Set( "Halation", halation );
 		compositeShader.Set( "Halo", halo );
 		compositeShader.Set( "Monochrome", Effective( PT_MONOCHROME ) );

@@ -82,6 +82,30 @@ namespace
 // Tolerances. Each one is derived where it is used; these are the primitives.
 //---------------------------------------------------------------------------
 
+/**
+	How far `pow( x, 1.0 )` is allowed to be from `x`.
+
+	It is not zero on any GPU, and this is the single most load-bearing
+	tolerance in the file. GLSL 4.10 section 8.2 specifies `pow` as inherited
+	from `exp2`, `log2` and a multiply, and gives `log2` and `exp2` 3 ULP each
+	outside their near ranges. For light as low as 1/256, `log2` returns -8,
+	where 3 ULP is about 2.9e-6 ABSOLUTE; carried back through `exp2` that is
+	`ln2 * 2.9e-6` relative, about 2.0e-6, plus `exp2`'s own 3 ULP. The bound
+	is therefore about 2.4e-6 relative, and this is a little over three times
+	that.
+
+	It is worth being blunt about where it bites, because it is not only the
+	pass-through check: `log2( 1.0 )` is allowed to return something other
+	than zero (the spec gives it an absolute error under 2^-21 inside
+	[0.5, 2.0]), so `pow( 1.0, 1.0 )` is allowed to return 1 +/- 7e-7. Any
+	check that feeds the model a WHITE field and predicts an output of
+	exactly one is therefore wrong by up to 7e-7 before its own arithmetic
+	starts, and a tolerance built only out of ULPs of the recursion would be
+	tighter than that and would fail on a conforming driver that is not this
+	one. `--burn` carries this term for exactly that reason.
+*/
+constexpr double kPowBound = 8.0e-6;
+
 /// One unit in the last place of a float near `value`. The tolerances below
 /// are counted in these rather than written as decimals, so that moving a
 /// constant in `Controls.cpp` moves the tolerance with it.
@@ -582,6 +606,11 @@ struct Physics
 {
 	float sensitivity, capacity, beam, gamma, dark, leak;
 	float burnRise, burnFall, burnDepth;
+
+	/// The video gain the chain is lined up with. Not a control; see
+	/// Controls.h. Every prediction below is in OUTPUT units, so every one of
+	/// them carries it.
+	float gain;
 };
 
 Physics physicsOf( float sensitivity, float capacity, float beamParam, float lagParam,
@@ -598,6 +627,7 @@ Physics physicsOf( float sensitivity, float capacity, float beamParam, float lag
 	p.burnRise    = BurnRiseFromParam( riseParam );
 	p.burnFall    = BurnFallFromParam( fallParam );
 	p.burnDepth   = BurnDepthFromParam( depthParam );
+	p.gain        = VideoGain( p.sensitivity, p.dark, p.beam );
 	return p;
 }
 
@@ -671,11 +701,14 @@ int runLagCheck()
 	constexpr int kCharge = 12;///< fields of white; two would do
 	constexpr int kDark   = 10;///< fields to watch it go
 
-	const double tolerance = 8.0 * kDark * ulpNear( p.capacity ) * 0.5;
+	//In CHARGE units first, then carried into output units by the same gain
+	//the plugin applies. The recursion happens in charge; the picture is what
+	//comes back.
+	const double tolerance = 8.0 * kDark * ulpNear( p.capacity ) * 0.5 * double( p.gain );
 
-	std::printf( "  capacity %.6f, beam %.6f -> %.3f fields to discharge\n",
-	             p.capacity, p.beam, p.capacity / p.beam );
-	std::printf( "  tolerance %.3g = 8 x %d fields x half a ULP of the capacity\n",
+	std::printf( "  capacity %.6f, beam %.6f -> %.3f fields to discharge; video gain %.4f\n",
+	             p.capacity, p.beam, p.capacity / p.beam, p.gain );
+	std::printf( "  tolerance %.3g = 8 x %d fields x half a ULP of the capacity, x the gain\n",
 	             tolerance, kDark );
 
 	struct Size
@@ -689,6 +722,15 @@ int runLagCheck()
 
 	for( const Size& size : rasters )
 	{
+		//Four probes, two of them one pixel in from an edge. Four pixels each
+		//way is the least raster that has four distinct ones.
+		if( size.w < 4 || size.h < 4 )
+		{
+			std::printf( "  %dx%d has no four distinct probes  FAILED\n", size.w, size.h );
+			++failures;
+			continue;
+		}
+
 		std::vector< std::string > settings = quiet();
 		settings.insert( settings.end(), sliders.begin(), sliders.end() );
 
@@ -746,7 +788,7 @@ int runLagCheck()
 	for( int f = 1; f <= kDark; ++f )
 	{
 		const double charge    = std::max( 0.0, double( p.capacity ) - double( f ) * double( p.beam ) );
-		const double predicted = std::min( charge, double( p.beam ) );
+		const double predicted = std::min( charge, double( p.beam ) ) * double( p.gain );
 
 		const double a  = measured[ 0 ][ static_cast< size_t >( f - 1 ) ];
 		const double b  = measured[ 1 ][ static_cast< size_t >( f - 1 ) ];
@@ -788,6 +830,7 @@ int runLagCheck()
 	// one of them must discharge on even fields and the other on odd, and
 	// which is which depends on the raster's origin, not on the physics.
 	//-------------------------------------------------------------------
+	for( const Size& size : rasters )
 	{
 		std::vector< std::string > settings = quiet();
 		settings.insert( settings.end(), sliders.begin(), sliders.end() );
@@ -795,7 +838,7 @@ int runLagCheck()
 			if( s == "Field Mode=0" )
 				s = "Field Mode=1";
 
-		Rig rig( 64, 36 );
+		Rig rig( size.w, size.h );
 		std::string error;
 		if( !rig.init( settings, error ) )
 		{
@@ -803,8 +846,8 @@ int runLagCheck()
 			return 1;
 		}
 
-		const std::vector< float > white = flat( 64, 36, 1.0f );
-		const std::vector< float > black = flat( 64, 36, 0.0f );
+		const std::vector< float > white = flat( size.w, size.h, 1.0f );
+		const std::vector< float > black = flat( size.w, size.h, 0.0f );
 
 		std::vector< double > rowA, rowB;
 		for( int i = 0; i < kCharge; ++i )
@@ -834,7 +877,7 @@ int runLagCheck()
 				residue -= residue * double( p.leak );
 				charge = std::min( residue + double( p.sensitivity ) * light, double( p.capacity ) );
 				if( lineParity == parity )
-					heldSignal = std::min( charge, double( p.beam ) );
+					heldSignal = std::min( charge, double( p.beam ) ) * double( p.gain );
 				if( n >= kCharge )
 					out.push_back( heldSignal );
 			}
@@ -856,11 +899,12 @@ int runLagCheck()
 		const double straight = std::max( worstAgainst( rowA, even ), worstAgainst( rowB, odd ) );
 		const double swapped  = std::max( worstAgainst( rowA, odd ), worstAgainst( rowB, even ) );
 		const double best     = std::min( straight, swapped );
-		const double twoFieldTolerance = 8.0 * kDark * 2 * ulpNear( p.capacity ) * 0.5;
+		const double twoFieldTolerance = 8.0 * kDark * 2 * ulpNear( p.capacity ) * 0.5 * double( p.gain );
 
-		std::printf( "  two fields: adjacent rows follow the alternating recursion to %.3g "
+		std::printf( "  two fields %3dx%-3d: adjacent rows follow the alternating recursion to %.3g "
 		             "(tolerance %.3g)  %s\n",
-		             best, twoFieldTolerance, best <= twoFieldTolerance ? "ok" : "FAILED" );
+		             size.w, size.h, best, twoFieldTolerance,
+		             best <= twoFieldTolerance ? "ok" : "FAILED" );
 		if( best > twoFieldTolerance )
 			++failures;
 
@@ -873,8 +917,8 @@ int runLagCheck()
 			return n;
 		};
 		const int twoFieldLength = lastLit( rowA, 0.0 );
-		std::printf( "  two fields: the tail runs %d fields against %d in Frame mode  %s\n",
-		             twoFieldLength, fields,
+		std::printf( "  two fields %3dx%-3d: the tail runs %d fields against %d in Frame mode  %s\n",
+		             size.w, size.h, twoFieldLength, fields,
 		             twoFieldLength >= 2 * fields - 1 ? "ok" : "FAILED" );
 		if( twoFieldLength < 2 * fields - 1 )
 			++failures;
@@ -929,16 +973,23 @@ int runCometCheck()
 	const double ratio    = double( p.capacity ) / double( p.beam );
 	const int tailFields  = static_cast< int >( std::floor( ratio - 0.5 ) );
 	const int predicted   = kVelocity * tailFields;
-	const double half     = 0.5 * double( p.beam );
+	//Half a FULL signal, in output units: the full signal is the beam current
+	//through the video gain, which is what a saturated highlight reads.
+	const double half     = 0.5 * double( p.beam ) * double( p.gain );
 
 	//The margins. A tail measured at a threshold the signal crosses near a
 	//pixel boundary is a coin flip, not a measurement.
+	//
+	//In OUTPUT units on both sides, like `half` -- the gain cancels out of the
+	//ratio, but writing one side in charge and the other in output is how a
+	//check silently stops meaning anything, so both carry it.
+	const double full    = double( p.beam ) * double( p.gain );
 	const double atLast  = std::min( double( p.capacity ) - double( tailFields ) * double( p.beam ),
-	                                 double( p.beam ) );
+	                                 double( p.beam ) ) * double( p.gain );
 	const double atNext  = std::max( 0.0, std::min( double( p.capacity ) - double( tailFields + 1 ) * double( p.beam ),
-	                                                double( p.beam ) ) );
-	const double marginA = ( atLast - half ) / double( p.beam );
-	const double marginB = ( half - atNext ) / double( p.beam );
+	                                                double( p.beam ) ) ) * double( p.gain );
+	const double marginA = ( atLast - half ) / full;
+	const double marginB = ( half - atNext ) / full;
 
 	std::printf( "  v = %d px/field, patch %d px, capacity/beam = %.3f\n", kVelocity, kPatch, ratio );
 	std::printf( "  predicted tail %d px = %d px/field x %d fields above half a signal\n",
@@ -1065,7 +1116,14 @@ int runCapacityCheck()
 	const float hundred = 100.0f * p.capacity / p.sensitivity;
 	const float under   = 0.25f * p.capacity / p.sensitivity;
 
-	std::printf( "  capacity %.6f, beam %.6f, sensitivity %.3f\n", p.capacity, p.beam, p.sensitivity );
+	//What a saturated target reads at the output: the capacity through the
+	//video gain, and the multiply is the SAME single-precision multiply the
+	//shader does, so the comparison below can still be bitwise.
+	const float saturated = p.capacity * p.gain;
+
+	std::printf( "  capacity %.6f, beam %.6f, sensitivity %.3f, video gain %.4f\n",
+	             p.capacity, p.beam, p.sensitivity, p.gain );
+	std::printf( "  a saturated target therefore reads %.9g\n", saturated );
 	std::printf( "  patches at L = %.4f (10x), %.4f (100x) and %.6f (0.25x)\n", ten, hundred, under );
 
 	if( hundred > 1.0f )
@@ -1083,6 +1141,17 @@ int runCapacityCheck()
 	int failures = 0;
 	for( const Size& size : rasters )
 	{
+		//The three patches are thirds of the width and the probes sit at
+		//1/6, 1/2 and 5/6 of it, so a raster narrower than about a dozen
+		//pixels would put a probe on a boundary. Stated rather than assumed:
+		//the check is about the target, not about where a third lands.
+		if( size.w < 12 )
+		{
+			std::printf( "  %dx%d is too narrow to hold three patches  FAILED\n", size.w, size.h );
+			++failures;
+			continue;
+		}
+
 		std::vector< std::string > settings = quiet();
 		settings.insert( settings.end(), sliders.begin(), sliders.end() );
 
@@ -1119,8 +1188,8 @@ int runCapacityCheck()
 		const float c                    = rig.at( image, size.w * 5 / 6, row, 0 );
 
 		const bool equal    = a == b;//bitwise: see the note above
-		const bool isCap    = a == p.capacity;
-		const bool notConst = c < p.capacity * 0.5f;
+		const bool isCap    = a == saturated;
+		const bool notConst = c < saturated * 0.5f;
 
 		std::printf( "  %3dx%-3d  10x %.9g   100x %.9g   0.25x %.9g\n", size.w, size.h, a, b, c );
 		std::printf( "           equal bitwise: %s   equals the capacity: %s   "
@@ -1187,13 +1256,24 @@ int runBurnCheck()
 	std::printf( "  rise pole %.3g (tau %.0f fields), fall pole %.3g (tau %.0f fields)\n",
 	             p.burnRise, 1.0 / p.burnRise, p.burnFall, 1.0 / p.burnFall );
 
+	int failures = 0;
+	//The prediction below is `output = 1 - burn`, which is only true while the
+	//video gain is exactly unity. Asserted rather than assumed: a moved range
+	//in Controls.cpp would otherwise turn this check into a measurement of the
+	//gain.
+	if( p.gain != 1.0f || p.sensitivity != 1.0f )
+	{
+		std::printf( "  video gain is %.9g and sensitivity %.9g -- both must be exactly 1  FAILED\n",
+		             p.gain, p.sensitivity );
+		++failures;
+	}
+
 	struct Size
 	{
 		int w, h;
 	};
 	const Size rasters[] = { { 32, 18 }, { 160, 90 } };
 
-	int failures = 0;
 	for( const Size& size : rasters )
 	{
 		std::vector< std::string > settings = quiet();
@@ -1228,8 +1308,15 @@ int runBurnCheck()
 			//The output of field n uses the burn from the END of field n-1.
 			const double burn      = drive * ( 1.0 - std::pow( 1.0 - double( p.burnRise ), n - 1 ) );
 			const double predicted = 1.0 - burn;
-			const double got       = rig.at( rig.read(), size.w / 2, size.h / 2, 0 );
-			const double tolerance = 4.0 * n * 1.1920929e-7;
+			const double got = rig.at( rig.read(), size.w / 2, size.h / 2, 0 );
+			//Two terms, and the second is the one an audit pass added. The
+			//accumulation term is n fields of subtract-multiply-add in
+			//float32; the pow term is there because the drive and the output
+			//are both scaled by `pow( 1.0, 1.0 )`, which the GLSL spec does
+			//not promise is 1. Without it this check is tighter at n = 1 than
+			//the specification allows, and would fail on a conforming driver
+			//that is not this one.
+			const double tolerance = 4.0 * n * 1.1920929e-7 + 2.0 * kPowBound;
 			const bool ok          = std::fabs( got - predicted ) <= tolerance;
 
 			std::printf( "  %3dx%-3d rise  field %4d: %.7f against %.7f (tol %.2g)  %s\n",
@@ -1247,7 +1334,7 @@ int runBurnCheck()
 		const double recovered = burnAtEnd * std::pow( 1.0 - double( p.burnFall ), kRecover );
 		const double predicted = 1.0 - recovered;
 		const double got       = rig.at( rig.read(), size.w / 2, size.h / 2, 0 );
-		const double tolerance = 4.0 * ( kRise + kRecover ) * 1.1920929e-7;
+		const double tolerance = 4.0 * ( kRise + kRecover ) * 1.1920929e-7 + 2.0 * kPowBound;
 		const bool ok          = std::fabs( got - predicted ) <= tolerance;
 
 		std::printf( "  %3dx%-3d fall  after %4d dark fields: %.7f against %.7f (tol %.2g)  %s\n",
@@ -1313,19 +1400,23 @@ int runPassthroughCheck()
 	};
 	const Physics p = physicsOf( 0.25f, 0.2f, 1.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f );
 
-	constexpr double kTolerance = 8.0e-6;
+	constexpr double kTolerance = kPowBound;
 
 	std::printf( "  sensitivity %.9g (want exactly 1), gamma %.9g (want exactly 1)\n",
 	             p.sensitivity, p.gamma );
 	std::printf( "  beam %.6f >= capacity %.6f >= 1: the beam empties the target every field\n",
 	             p.beam, p.capacity );
+	std::printf( "  video gain %.9g (want exactly 1: x * 1.0 is exact, anything else is not)\n",
+	             p.gain );
 	std::printf( "  tolerance %.3g absolute, from the GLSL spec's accuracy for pow -- NOT one ULP\n",
 	             kTolerance );
 
 	int failures = 0;
-	if( p.sensitivity != 1.0f || p.gamma != 1.0f || p.dark != 0.0f || p.leak != 0.0f )
+	if( p.sensitivity != 1.0f || p.gamma != 1.0f || p.dark != 0.0f || p.leak != 0.0f
+	    || p.gain != 1.0f )
 	{
-		std::printf( "  the null settings are not exact -- a Controls.cpp range has moved  FAILED\n" );
+		std::printf( "  the null settings are not exact (gain %.9g) -- a Controls.cpp range has "
+		             "moved  FAILED\n", p.gain );
 		++failures;
 	}
 

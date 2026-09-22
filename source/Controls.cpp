@@ -63,7 +63,18 @@ float DarkCurrentFromParam( float p )
 float LagScaleFromParam( float p )
 {
 	const float q = clamp01( p );
-	return 1.0f / ( 1.0f + 24.0f * q * q );//exactly 1.0 at the null
+	return 1.0f / ( 1.0f + 8.0f * q * q );//exactly 1.0 at the null
+}
+
+float VideoGain( float photoGain, float dark, float beam )
+{
+	//The charge a peak-white scene makes in one field.
+	const float white = photoGain + dark;
+
+	//Guard, not policy: every control that feeds this has a positive floor,
+	//so the only way to reach zero is a caller that has not read Controls.h.
+	const float peak = std::min( beam, white );
+	return peak > 0.0f ? 1.0f / peak : 1.0f;
 }
 
 float LeakFromParam( float p )

@@ -19,17 +19,25 @@
 	none of that surface: the host's parameters are never touched, so there is
 	nothing for the host to argue with.
 
-	The cost, which is real: while a type is selected the seven controls below
+	The cost, which is real: while a type is selected the eight controls below
 	are inert. The operator's slider still moves and the picture does not. That
 	is why `Custom` exists, why the README says so in as many words, and why
 	`tools/sweep.py` gives every one of them a `Type=0` context -- without it
-	the sweep would report seven dead controls, correctly.
+	the sweep would report eight dead controls, correctly.
 
 	--------------------------------------------------------- what is NOT here
 
-	`Sensitivity`, `Target Capacity` and `Beam Current` are deliberately left
-	free. They are the exposure -- how the camera is set up on the day -- not
-	what the tube is. Pinning them would mean a type could not be metered.
+	`Sensitivity` and `Beam Current` are deliberately left free. They are the
+	exposure -- how the camera is lined up on the day -- not what the tube is,
+	and pinning them would mean a type could not be metered.
+
+	`Target Capacity` IS pinned, and that is the interesting one. The length of
+	the tail is `capacity / beam` and nothing else, so capacity is what makes a
+	vidicon smear for nine fields where a plumbicon smears for two. Lag Amount
+	alone cannot do it: it lowers the beam, which shortens the ceiling on the
+	signal as fast as it lengthens the tail, so a tube tuned with lag alone
+	comes out dim rather than smeary. That is the mistake this table was
+	written with the first time; see AGENTS.md.
 
 	--------------------------------------------------------------- the values
 
@@ -50,6 +58,7 @@ enum Param
 {
 	kGamma,
 	kDark,
+	kCapacity,
 	kLag,
 	kBurnRise,
 	kBurnFall,
@@ -69,25 +78,27 @@ inline constexpr int kCount = 4;
 /// Element 0 of the Type dropdown is Custom, which is NOT in this table: it
 /// means "the sliders are the truth". So a Type VALUE of n names kTubes[n-1].
 inline constexpr Tube kTubes[ kCount ] = {
-	//                gamma  dark   lag   rise   fall  depth  halo
+	//                   gamma  dark   cap    lag   rise   fall  depth  halo
 	//Plumbicon: the lead-oxide target the plugin is named for. Near-linear
 	//transfer, low dark current, low lag, and it is the tube that made
 	//colour broadcast cameras usable in a studio rather than a furnace.
-	{ "Plumbicon",   { 0.50f, 0.05f, 0.18f, 0.12f, 0.55f, 0.18f, 0.00f } },
+	//Capacity 0.45 -> about two fields of tail at the default beam.
+	{ "Plumbicon",      { 0.50f, 0.05f, 0.45f, 0.22f, 0.12f, 0.55f, 0.18f, 0.00f } },
 
 	//Vidicon: antimony trisulphide. Cheap, sensitive, and famous for
 	//smearing everything and keeping a picture of whatever you left it
-	//pointing at. Gamma 0.65 -> param 0.15.
-	{ "Vidicon",     { 0.15f, 0.55f, 0.72f, 0.62f, 0.22f, 0.75f, 0.00f } },
+	//pointing at. Gamma 0.65 -> param 0.15. Capacity near the top, which is
+	//where the nine-field smear comes from.
+	{ "Vidicon",        { 0.15f, 0.55f, 0.95f, 0.46f, 0.62f, 0.22f, 0.75f, 0.00f } },
 
 	//Saticon: selenium-arsenic-tellurium. Between the two, which is the
 	//whole reason it existed. Gamma 0.8 -> param 0.30.
-	{ "Saticon",     { 0.30f, 0.25f, 0.42f, 0.35f, 0.38f, 0.40f, 0.00f } },
+	{ "Saticon",        { 0.30f, 0.25f, 0.70f, 0.34f, 0.35f, 0.38f, 0.40f, 0.00f } },
 
 	//Image Orthicon: the one with the black halo. Everything else here is
 	//ordinary; the halo is the signature, and it is the one term in this
 	//plugin that does not fall out of the charge store.
-	{ "Image Orthicon", { 0.50f, 0.30f, 0.30f, 0.30f, 0.45f, 0.30f, 0.75f } },
+	{ "Image Orthicon", { 0.50f, 0.30f, 0.90f, 0.38f, 0.30f, 0.45f, 0.30f, 0.75f } },
 };
 
 } // namespace plumbicon::tubes
