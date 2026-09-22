@@ -46,6 +46,13 @@ Two smaller things fall out too, and neither was aimed at:
 - **Two Fields doubles the tail.** The beam visits a line every other field, so
   a line is discharged half as often and holds its residue twice as long. That
   is one uniform, not a mode.
+- **And Two Fields twitters on motion, and only on motion.** A moving edge is
+  caught at two different positions on alternate lines, because the two sets of
+  lines were last read one field apart; a static area has no line structure at
+  all. Nothing in the code has an opinion about lines except the parity test,
+  and what comes out is interlace twitter on exactly the parts of the picture
+  that move. It is visible in a render of the test card at
+  `Field Mode = Two Fields` and it was not designed.
 
 ### What this is NOT
 

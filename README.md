@@ -56,10 +56,14 @@ famous for is what is left over:
   down where the target has been bright, and recovers on a slower pole than it
   rose on — because a tube etches faster than it recovers.
 
-Two more things fall out that were not aimed at. **A smear changes colour**,
+Three more things fall out that were not aimed at. **A smear changes colour**,
 because the store is per channel: a bluish highlight lags in blue and not in
-red. And **Two Fields doubles the tail**, because the beam visits a line every
-other field and it therefore holds its residue twice as long.
+red. **Two Fields doubles the tail**, because the beam visits a line every
+other field and it therefore holds its residue twice as long. And **Two Fields
+twitters on motion, and only on motion** — a moving edge is caught at two
+different positions on alternate lines, because those lines were last read one
+field apart, while a static area has no line structure at all. Nothing in the
+code has an opinion about lines except the parity test.
 
 The discipline is the point. If an artefact needs a term of its own to appear,
 the mechanism has been lost somewhere. There is exactly **one** bolted-on term
