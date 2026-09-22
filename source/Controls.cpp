@@ -25,9 +25,13 @@ float SensitivityFromParam( float p )
 
 float CapacityFromParam( float p )
 {
-	//A target that saturates below white would clip every picture, so the
-	//bottom of the range is still a quarter of full scale rather than zero.
-	return 0.25f + clamp01( p ) * 5.75f;
+	//The bottom of the range is 0.04 and not something tidier like a quarter,
+	//and that is a test requirement rather than a taste: `pbtest --capacity`
+	//has to drive one patch TEN times past capacity and another a HUNDRED
+	//times past it, and the most light an 8-bit clip can deliver is
+	//Sensitivity x 1.0 = 4.0 charge per field. 4.0 / 0.04 is a hundred.
+	//Raise this floor and that check quietly stops testing what it says.
+	return 0.04f + clamp01( p ) * 5.96f;
 }
 
 float BeamCurrentFromParam( float p )

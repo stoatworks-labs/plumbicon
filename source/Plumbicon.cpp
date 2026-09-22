@@ -96,9 +96,9 @@ Plumbicon::Plumbicon()
 	// nothing in one for the tail to come from.
 	//---------------------------------------------------------------------
 	params[ PT_TYPE ]        = 1.0f;  //Plumbicon
-	params[ PT_SENSITIVITY ] = 0.40f; //1.6 charge per field at peak white
-	params[ PT_CAPACITY ]    = 0.865f;//5.22 -- about five fields of tail
-	params[ PT_BEAM ]        = 0.80f; //1.92 before the lag scale
+	params[ PT_SENSITIVITY ] = 0.34f; //1.36 charge per field at peak white
+	params[ PT_CAPACITY ]    = 0.865f;//5.19 -- about six fields of tail
+	params[ PT_BEAM ]        = 0.77f; //1.61 before the lag scale, 0.91 after
 
 	//Pinned by Type. The values here are what a Custom tube starts from, and
 	//they are the Plumbicon row so that switching to Custom changes nothing.

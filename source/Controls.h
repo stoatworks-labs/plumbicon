@@ -61,7 +61,7 @@ namespace plumbicon
 /// charge in one field, which is the setting the pass-through check uses.
 float SensitivityFromParam( float p );
 
-/// The most charge the target can hold, in the same units. 0.25..6.0. Light
+/// The most charge the target can hold, in the same units. 0.04..6.0. Light
 /// past this is simply not stored -- which is why a highlight blocks up and
 /// stops carrying detail rather than getting brighter.
 ///
