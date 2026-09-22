@@ -35,8 +35,9 @@ bool PassBuffer::Ensure( GLsizei requestedWidth, GLsizei requestedHeight, GLint 
 
 		//Clamp to edge on every buffer. The default is GL_REPEAT, and a blur
 		//tap that wraps puts the right-hand edge of the picture into the
-		//left-hand one -- which on a logo reads as a stray bulb floating off
-		//the side of the frame with nothing to explain it.
+		//left-hand one -- so the halation around a highlight leaving frame
+		//right would appear at frame left, with nothing on screen to explain
+		//it. The bright pass's 4x4 box reaches past the edge too.
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 

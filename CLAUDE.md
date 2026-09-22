@@ -113,5 +113,7 @@ Resolume). It exists for the one failure that actually happens: a shader that
 will not compile, which otherwise looks like "the effect does nothing" with no
 message anywhere.
 
-    ~/Library/Logs/plumbicon/plumbicon.YYYY-MM-DD.log       macOS
-    %LOCALAPPDATA%\plumbicon\plumbicon.YYYY-MM-DD.log       Windows
+    ~/Library/Logs/plumbicon/plumbicon.YYYY-MM-DD.log        macOS
+    %LOCALAPPDATA%\plumbicon\logs\plumbicon.YYYY-MM-DD.log   Windows
+
+Override the directory with `PLUMBICON_LOG_DIR`.

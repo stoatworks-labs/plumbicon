@@ -169,8 +169,8 @@ private:
 	// step turns an exact closed form into an approximate one.
 	//
 	// The cost is memory, and it is the honest headline number for this
-	// plugin: two picture-sized RGBA32F buffers, which is 66 MB at 1080p and
-	// 265 MB at 4K. Two Fields mode adds a third and a fourth.
+	// plugin: two picture-sized RGBA32F buffers, which is 63 MB at 1080p and
+	// 253 MB at 4K. Two Fields mode adds a third and a fourth.
 	//---------------------------------------------------------------------
 	plumbicon::PassBuffer state[ 2 ];///< rgb charge (post-light, pre-beam), a burn
 	plumbicon::PassBuffer held[ 2 ]; ///< Two Fields only: the signal between visits

@@ -463,7 +463,7 @@ FFResult Plumbicon::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 	{
 		diag::error( "could not allocate the target at "
 		             + std::to_string( pictureWidth ) + "x" + std::to_string( pictureHeight )
-		             + " - RGBA32F state is 32 MB a buffer at 1080p and 133 MB at 4K" );
+		             + " - RGBA32F state is 32 MB a buffer at 1080p and 127 MB at 4K" );
 		return FF_FAIL;
 	}
 
