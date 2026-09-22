@@ -57,6 +57,16 @@ old-cathode after it and you have the whole chain, camera then monitor. Read
 old-cathode before changing anything here, and then stay out of its territory:
 the moment this plugin grows a phosphor it has stopped being a camera.
 
+**One word appears in both plugins and it is not a duplicate.** old-cathode has
+halation too -- the beam blooming in the glass of a *display* when it is driven
+hard. This plugin's halation is light scattering in the *faceplate of a camera*
+before it ever reaches the target. Same word, opposite ends of the chain, and
+both are real; run the two together and a bright caption gets both, which is
+what actually happened. The same goes for noise: old-cathode's is on the
+composite, after the encoder, and arrives as coloured speckle through the
+decoder. This plugin's is beam and preamp noise at the camera, additive and
+level-independent, which is why it shows up in the shadows.
+
 A consequence worth knowing, because it looks like a defect: **a Transfer Gamma
 below 1.0 lifts the picture.** A vidicon's transfer characteristic really is
 about 0.65, and a real chain hands that signal to a display which re-applies
