@@ -25,6 +25,38 @@ it and the faint rectangle etched around it are not four effects — they are on
 store of charge, seen from four angles. Rendered by `pbtest`, the offline
 harness, not captured from Resolume.</sub>
 
+<!-- downloads:start -->
+
+## Download
+
+**[v0.1.0](https://github.com/stoatworks-labs/plumbicon/releases/tag/v0.1.0)** — prebuilt for macOS and Windows. Pick your platform:
+
+<details>
+<summary><b>macOS</b> — Universal (Apple Silicon + Intel)</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`plumbicon-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/plumbicon/releases/download/v0.1.0/plumbicon-0.1.0-macos-universal.dmg) | 220 KB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`plumbicon-macos-universal.zip`](https://github.com/stoatworks-labs/plumbicon/releases/latest/download/plumbicon-macos-universal.zip) | 182 KB |
+
+</details>
+
+<details>
+<summary><b>Windows</b> — x64</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| x64 · .exe installer | [`plumbicon-0.1.0-windows-x86_64-setup.exe`](https://github.com/stoatworks-labs/plumbicon/releases/download/v0.1.0/plumbicon-0.1.0-windows-x86_64-setup.exe) | 221 KB |
+| x64 · .zip archive | [`plumbicon-windows-x86_64.zip`](https://github.com/stoatworks-labs/plumbicon/releases/latest/download/plumbicon-windows-x86_64.zip) | 113 KB |
+
+</details>
+
+All builds, checksums and release notes: [github.com/stoatworks-labs/plumbicon/releases](https://github.com/stoatworks-labs/plumbicon/releases).
+
+macOS builds are signed and notarised and open normally. The Windows builds are unsigned, so SmartScreen warns once.
+
+<!-- downloads:end -->
+
 ## This is the camera, not the screen
 
 Nothing here models a display. There is no phosphor, no ghosting, no vertical
