@@ -21,7 +21,7 @@ charge, seen from four angles.*
 > tracks its closed form to 2e-7 over 700 fields. All 19 controls measurably change the picture.
 > It has **never been loaded into Resolume on macOS** — the one host it has run in is the fleet's
 > own test host, `oxbow`, for 120 frames.
-> <!-- ARENA -->It has not yet been run in Resolume on Windows either.<!-- /ARENA -->
+> On Windows, a build of v0.1.0 loads, registers and renders in Resolume Arena 7.27.1, with every control matching what the plugin declares — on software rendering, so that says nothing about a GPU. Two controls that only act on motion and over many fields, Recovery and Burn Rate, could not be shown moving there on a still picture.
 > Try it on a spare layer before you put it in a show.
 >
 > This codebase was created with AI assistance, directed and reviewed by a human author.

@@ -11,7 +11,7 @@
 > those runs at two rasters and fails if they disagree, and every tolerance is
 > derived from the arithmetic or from the GLSL specification rather than from
 > what this GPU printed first (see [Status](#status)). It has **never been
-> loaded into Resolume**, on any platform.
+> loaded into Resolume on macOS**; see [Status](#status) for Windows.
 
 A camera tube, as an FFGL effect for [Resolume](https://resolume.com) Arena and
 Avenue. Not a filter that adds smear and bloom — a **photoconductive target
@@ -113,9 +113,10 @@ They are independent, which is why both controls exist.
 are the same model with different constants, and while one is selected the
 Transfer Gamma, Dark Current, Target Capacity, Lag Amount, Burn and Halo
 sliders are **inert** — they show a value and do not change the picture. Set
-`Type = Custom` to drive them yourself. Sensitivity and Beam Current are always
-live, because those are how a camera is lined up on the day rather than what
-the tube is made of.
+`Type = Custom` to drive them yourself; Custom starts from the Plumbicon row,
+so switching to it changes nothing until you move a slider. Sensitivity and
+Beam Current are always live, because those are how a camera is lined up on
+the day rather than what the tube is made of.
 
 **Time is measured in fields, and a field is a rendered frame.** Lag is a field
 figure in every tube data sheet — a 50 Hz and a 60 Hz tube with the same
@@ -131,8 +132,12 @@ old-cathode exists.
 
 ## Status
 
-**v0.1.0, 2026-09-22, and honestly early.** Verified by measurement on an
-M4 Max, macOS 26.4. Nothing here has been near Resolume.
+**v0.1.0, built 2026-09-22 and released 2026-09-23, and
+honestly early.** Verified by measurement on an M4 Max, macOS 26.4. Never
+loaded into Resolume on macOS. On Windows it has: a CI build of the v0.1.0 source went through the fleet's Arena gate on 2026-09-23 (Resolume Arena 7.27.1 on win-lab, Mesa llvmpipe, no GPU). It loads from Extra Effects, registers as `SW Plumbicon` / `PB01` / effect, all 25 host parameters (Arena's Opacity plus these 24) match the declaration in name, order, type, range and default, it renders, and Arena's log stays clean. 18 of the 20 controls the gate probes measurably moved the picture; **Recovery and Burn Rate read as dead**, because the gate holds a still picture for about a second after each change and those two only act on motion and over many fields — the harness sweep proves both live over 40 and 90 fields. That is the gate's blind spot, not the plugin's. It says nothing about speed or a real GPU.
+
+User guide: [docs/USER-GUIDE.md](docs/USER-GUIDE.md), also at
+https://stoatworks-labs.com/software/plumbicon/guide/
 
 | Check | Result |
 | --- | --- |
@@ -144,7 +149,7 @@ M4 Max, macOS 26.4. Nothing here has been near Resolume.
 | Pass-through | a beam above capacity is the identity to **5.96e-8**, against an 8e-6 tolerance derived from the GLSL spec's accuracy for `pow`. Alpha is bitwise |
 | No dead controls | all **19** swept parameters measurably change the picture |
 | Shaders | all **6** compile through `glslc`, including the four assembled at run time that exist in no file |
-| In an FFGL host | `oxbow` instantiates it and renders **120 frames, gl error 0x0, PASS** — `SW Plumbicon` / `PB01` / `effect`, 23 parameters in six groups |
+| In an FFGL host | `oxbow` instantiates it and renders **120 frames, gl error 0x0, PASS** — `SW Plumbicon` / `PB01` / `effect`, 24 parameters in six groups (23 before the About block gained its User guide entry; re-run 2026-09-23) |
 | macOS binary | universal (`x86_64 arm64`), exports `plugMain`, the plist is right, and it ad-hoc signs |
 | Render cost | 0.60–0.64 ms/frame at 720p, 1.20–1.30 at 1080p, 4.50–4.63 at 4K |
 
@@ -155,15 +160,16 @@ moves by 1e-5 of its range per field, an order of magnitude below a half
 float's epsilon at 1.0, so in 16F it would simply never start. Stack this on
 four 4K layers and you will notice.
 
-**Not done:** never loaded into Resolume on any platform; never built for
-Windows; no OpenFX port, no browser demo, no user guide and no video. The
+**Not done:** never loaded into Resolume on macOS; the universal build has
+never run on an Intel Mac; no OpenFX port, no browser demo and no video. The
+Windows x64 DLL is compiled with MSVC by `release.yml` on GitHub. The
 tube-type constants are judged rather than taken off a data sheet, the burn
 time constants are faster than a real tube's so the effect can be shown in a
 take, and the halation is two Gaussians rather than a measured point-spread
 function. `Field Mode` models the scan cadence, not an interlaced signal — the
 output is progressive, and interlace *on a display* is deliberately
-old-cathode's. CI builds the plugin, compiles every shader and runs the five
-physics checks on a GPU-less runner's software renderer — the first run there
+old-cathode's. CI (`ci.yml`, on GitHub's macOS runner) builds the plugin,
+compiles every shader and runs the five physics checks on a GPU-less runner's software renderer — the first run there
 caught a tolerance this Mac's GPU had hidden; `tools/verify.sh` on a machine
 with a GPU is the full gate. See
 [AGENTS.md](AGENTS.md) for the full list of what is assumed rather than
