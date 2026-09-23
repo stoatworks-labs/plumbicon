@@ -82,7 +82,7 @@ Plumbicon::Plumbicon()
 	// Defaults.
 	//
 	// They add up to a slightly over-exposed plumbicon: the top third of the
-	// picture blocks up and smears for about five fields, with a little
+	// picture blocks up and smears for about two fields, with a little
 	// halation and a little noise. The null is Mix at zero.
 	//
 	// The exposure is deliberate and it is the one thing about this plugin
@@ -97,14 +97,16 @@ Plumbicon::Plumbicon()
 	//---------------------------------------------------------------------
 	params[ PT_TYPE ]        = 1.0f;  //Plumbicon
 	params[ PT_SENSITIVITY ] = 0.34f; //1.36 charge per field at peak white
-	params[ PT_CAPACITY ]    = 0.865f;//5.19 -- about six fields of tail
 	params[ PT_BEAM ]        = 0.77f; //1.61 before the lag scale, 0.91 after
 
 	//Pinned by Type. The values here are what a Custom tube starts from, and
 	//they are the Plumbicon row so that switching to Custom changes nothing.
+	//Capacity and Lag Amount were 0.865 and 0.18 until v0.1.0 -- the only two
+	//that were not, so Custom jumped from two fields of tail to about five.
+	params[ PT_CAPACITY ]       = 0.45f;//the Plumbicon row: about two fields
 	params[ PT_GAMMA ]          = 0.50f;//exactly 1.0
 	params[ PT_DARK ]           = 0.05f;
-	params[ PT_LAG ]            = 0.18f;
+	params[ PT_LAG ]            = 0.22f;
 	params[ PT_BURN_RATE ]      = 0.12f;
 	params[ PT_BURN_RECOVERY ]  = 0.55f;
 	params[ PT_BURN_DEPTH ]     = 0.18f;
