@@ -131,6 +131,17 @@ instrument:
 
 They are independent, which is why both controls exist.
 
+[![Plumbicon — a tube camera as an effect, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=HQ-j39oUCgE)
+
+*[Watch it](https://www.youtube.com/watch?v=HQ-j39oUCgE) — 49 seconds:
+highlights lingering as the beam current comes down, comet tails that nothing
+draws, the four tube types, Two Fields doubling the lag, highlights blocking
+up past the target's capacity, and a burn-in left behind when the camera looks
+away. Every frame is the real plugin's output: an FFGL plugin has no window,
+so the footage is rendered by this repository's own offline harness
+(`pbtest --pipe`, driven by a cue sheet) rather than filmed off a screen, and
+the clips are Resolume's bundled demo media.*
+
 ## Controls
 
 | Group | |
@@ -193,7 +204,7 @@ float's epsilon at 1.0, so in 16F it would simply never start. Stack this on
 four 4K layers and you will notice.
 
 **Not done:** never loaded into Resolume on macOS; the universal build has
-never run on an Intel Mac; no OpenFX port, no browser demo and no video. The
+never run on an Intel Mac; no OpenFX port and no browser demo. The
 Windows x64 DLL is compiled with MSVC by `release.yml` on GitHub. The
 tube-type constants are judged rather than taken off a data sheet, the burn
 time constants are faster than a real tube's so the effect can be shown in a
