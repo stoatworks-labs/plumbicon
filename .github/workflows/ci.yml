@@ -52,22 +52,24 @@ jobs:
           brew install shaderc
           tools/verify.sh 2>&1 | sed -n '1,8p'
 
-      - name: The physics, if this runner can make a GL context
-        # Best effort, and the honest reason is in the CI section of AGENTS.md:
-        # EVERY numeric check in this repo renders, because the model lives in
-        # GLSL rather than in C++. A hosted macOS runner has no accelerated GL,
-        # and whether the software fallback can give a 4.1 core context is a
-        # fact about the runner rather than about this code.
+      - name: The physics, on the runner's software rasteriser
+        # The runner has no GPU, but the harness falls back from an accelerated
+        # context to Apple's software renderer, which does give a 4.1 core
+        # context -- so the physics runs here for real, at two rasters each,
+        # on a rasteriser that is NOT this repo's development GPU. That is the
+        # point of running it: the first run found --capacity claiming a
+        # bitwise equality that only this Mac's GPU delivers (see AGENTS.md).
         #
-        # These are NOT waived. They run for real, at two rasters each, in
-        # tools/verify.sh on a machine with a GPU, and that is the gate.
-        continue-on-error: true
+        # Every check runs even after one fails, so a red run names all of
+        # them rather than the first.
         run: |
-          ./build/pbtest --lag
-          ./build/pbtest --comet
-          ./build/pbtest --capacity
-          ./build/pbtest --burn
-          ./build/pbtest --passthrough
+          failed=""
+          for t in lag comet capacity burn passthrough; do
+            echo "::group::pbtest --$t"
+            ./build/pbtest --$t || failed="$failed --$t"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then echo "failed:$failed"; exit 1; fi
 
       # Uploading is not only for the artefact. This repo has no package
       # manifest, so github-actions is its only Dependabot ecosystem -- and a

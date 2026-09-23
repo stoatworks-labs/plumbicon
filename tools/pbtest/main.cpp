@@ -63,6 +63,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cfloat>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -1085,17 +1086,33 @@ int runCometCheck()
 	The target saturates, and past that more light is not more charge.
 
 	Two patches, one ten times past capacity and one a hundred times past it,
-	must come out at **exactly** the same value -- and that value must be the
-	capacity, not merely equal to each other.
+	must come out at the same value -- and that value must be the capacity,
+	not merely equal to each other.
 
-	**Tolerance: zero, bitwise, and that is a claim about the arithmetic
-	rather than a hope.** The only place the two patches differ is the value
-	handed to `min( residue + photo, capacity )`, and GLSL's `min` is exact:
-	when the first argument exceeds the second it returns the second
-	unchanged, whatever the first was. Everything downstream of that clamp
-	then runs identical operations on identical bits. A pass-through, by
-	contrast, does NOT get to claim bitwise equality, and this file says why
-	at `--passthrough`.
+	**Tolerance: one ULP of the LARGER of the source and the signal, and that
+	is a claim about the arithmetic rather than a fit.** The only place the two
+	patches differ INSIDE the model is the value handed to
+	`min( residue + photo, capacity )`, and GLSL's `min` is exact: when the
+	first argument exceeds the second it returns the second unchanged,
+	whatever the first was. So the stored charge, and the signal read from it,
+	are bitwise identical for both patches.
+
+	They are not bitwise identical at the OUTPUT, because the last line of the
+	plugin is `mix( source, signal, Mix )` and the source is the light itself,
+	which is 0.1 in one patch and 1.0 in the other. GLSL 4.10 defines `mix` as
+	`x * ( 1 - a ) + y * a`, and at a = 1 that is exact. But an implementation
+	may evaluate it as `x + ( y - x ) * a`, and GitHub's GPU-less macOS runner
+	does: there `1.0 + ( 0.11547 - 1.0 )` rounds the subtraction at the scale
+	of 1.0, and the 100x patch came out 0.115470052 against the capacity's
+	0.115470044 -- one ULP of the output, 7.5e-9. This Mac's GPU returns the
+	two bitwise equal. The first version of this check claimed zero and was
+	wrong for exactly that reason; see AGENTS.md.
+
+	`x + ( y - x ) * a` at a = 1 rounds twice: half a ULP of max( |x|, |y| ) in
+	the subtraction, half a ULP of the result in the add. The tolerance is
+	`2 * FLT_EPSILON * max( source, signal )`, 2.4e-7 at the 100x patch. A
+	target that did NOT saturate would put the 100x patch at the capacity plus
+	nine tenths of a full signal, seven orders of magnitude outside it.
 
 	A third patch, well BELOW capacity, is checked to come out different.
 	Without it a plugin that emitted a constant would pass this check with
@@ -1118,13 +1135,17 @@ int runCapacityCheck()
 
 	//What a saturated target reads at the output: the capacity through the
 	//video gain, and the multiply is the SAME single-precision multiply the
-	//shader does, so the comparison below can still be bitwise.
+	//shader does. The comparison is then within `tolerance`, which the note
+	//above derives from the final `mix` rather than from any observation.
 	const float saturated = p.capacity * p.gain;
+	const float tolerance = 2.0f * FLT_EPSILON * std::max( hundred, saturated );
 
 	std::printf( "  capacity %.6f, beam %.6f, sensitivity %.3f, video gain %.4f\n",
 	             p.capacity, p.beam, p.sensitivity, p.gain );
 	std::printf( "  a saturated target therefore reads %.9g\n", saturated );
 	std::printf( "  patches at L = %.4f (10x), %.4f (100x) and %.6f (0.25x)\n", ten, hundred, under );
+	std::printf( "  tolerance %.3g = 2 x FLT_EPSILON x max( source, signal ), from the final mix\n",
+	             tolerance );
 
 	if( hundred > 1.0f )
 	{
@@ -1187,14 +1208,16 @@ int runCapacityCheck()
 		const float b                    = rig.at( image, size.w / 2, row, 0 );
 		const float c                    = rig.at( image, size.w * 5 / 6, row, 0 );
 
-		const bool equal    = a == b;//bitwise: see the note above
-		const bool isCap    = a == saturated;
+		const bool equal    = std::abs( a - b ) <= tolerance;//see the note above
+		const bool isCap    = std::abs( a - saturated ) <= tolerance
+		                   && std::abs( b - saturated ) <= tolerance;
 		const bool notConst = c < saturated * 0.5f;
 
 		std::printf( "  %3dx%-3d  10x %.9g   100x %.9g   0.25x %.9g\n", size.w, size.h, a, b, c );
-		std::printf( "           equal bitwise: %s   equals the capacity: %s   "
+		std::printf( "           equal: %s (%.2g apart)   both equal the capacity: %s   "
 		             "the low patch differs: %s\n",
-		             equal ? "yes" : "NO", isCap ? "yes" : "NO", notConst ? "yes" : "NO" );
+		             equal ? "yes" : "NO", std::abs( a - b ), isCap ? "yes" : "NO",
+		             notConst ? "yes" : "NO" );
 		if( !( equal && isCap && notConst ) )
 			++failures;
 	}
