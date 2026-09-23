@@ -264,8 +264,10 @@ function.
 
 Every other plugin in this fleet with a physics claim has a CPU half a test can
 call with no context at all. This one does not, and that is a real cost: it
-means **every numeric check here needs a GPU**, so CI can build the plugin,
-list its parameters and compile its shaders, but it cannot run the physics.
+means **every numeric check here needs a GL 4.1 context**. A hosted runner has no
+GPU, but the harness falls back to Apple's software renderer, which does give
+one — so CI runs the physics there too, on a rasteriser that is not the
+development GPU (see the CI bullet under "What is not done").
 
 The reason is that the model is genuinely per pixel and per field. A charge
 store is a picture-sized state that has to be updated once per frame; the only
@@ -279,7 +281,8 @@ compared against.
 What is done instead: the harness drives the **real plugin class** through the
 real shader text, and predicts what should come out from the **same physical
 constants the plugin uploads**, read out of `Controls.h` rather than typed in
-again. `tools/verify.sh` is therefore the gate, and CI is a compile check.
+again. `tools/verify.sh` is the gate on a machine with a GPU; CI is the same
+five checks on the runner's software renderer.
 
 ---
 
@@ -315,8 +318,8 @@ they disagree.** Cheap, and the only way to find out.
 | 7 | `--comet` | tail length = `v × floor( K/B − 0.5 )` pixels | **±1 pixel** | the spec's figure. Everything in the prediction is integer: `v` is integer pixels a field, positions are integer, and `ceil( d/v ) ≤ F ⟺ d ≤ vF` |
 | 8 | `--comet` | the last lit pixel and the first dark one are each ≥ 0.15 of a full signal clear of the threshold | precondition on the constants, not on the GPU | a tail measured at a level the signal crosses near a pixel boundary is a coin flip dressed as a measurement. If this fails the right fix is to re-choose the constants, never to widen the tolerance. Measured: +0.500 and +0.223 |
 | 9 | `--comet` | the raster is big enough to hold the patch and its tail | stated and checked | the only way the raster enters this check at all |
-| 10 | `--capacity` | the 10× and 100× patches are **bitwise** equal | zero | `min( x, K )` returns `K` unchanged whenever `x > K`, which GLSL's definition (`y < x ? y : x`) guarantees exactly. Everything downstream then runs identical operations on identical bits: `mix( src, sig, 1 )` is `src*0 + sig*1`, `+ 0 * bloom`, `− 0 * ring`, `mix( sig, luma, 0 )`, `+ noise * 0` — every one of them exact for finite inputs, with or without FMA contraction |
-| 11 | `--capacity` | that value equals `capacity × gain` | zero, bitwise | the harness performs the *same single-precision multiply* the shader does |
+| 10 | `--capacity` | the 10× and 100× patches are equal | `2 × FLT_EPSILON × max( source, signal )`, 2.4e-7 | `min( x, K )` returns `K` unchanged whenever `x > K`, so the charge and the signal are bitwise identical for both patches. The OUTPUT is not: the last line is `mix( source, signal, Mix )` and the source is the light itself, 0.1 in one patch and 1.0 in the other. GLSL defines `mix` as `x(1−a) + ya`, exact at a = 1, but an implementation may evaluate `x + (y−x)a`, which rounds the subtraction at the scale of 1.0. GitHub's software renderer does, and the 100× patch came out 7.5e-9 (one ULP of the output) off — see below. Two half-ULPs of the larger operand bound it |
+| 11 | `--capacity` | both equal `capacity × gain` | same | the harness performs the *same single-precision multiply* the shader does, and then the same `mix` argument applies |
 | 12 | `--capacity` | a patch at a quarter of capacity comes out different | `< half` of the saturated value | without it, a plugin that emitted a constant would pass this check with full marks |
 | 13 | `--burn` | burn at field *n* follows `D + (b₀ − D)(1 − pole)ⁿ` | `4 × n × FLT_EPSILON + 2 × kPowBound` | *n* fields of subtract–multiply–add, at most ~2 ULP each, times a safety factor of 2 — **plus** the pow term, which the audit added. Measured worst: **2e-7** against 2.1e-4 |
 | 14 | `--burn` | the video gain and the sensitivity are exactly 1 | exact | the prediction is `output = 1 − burn`, which is only true at unity gain. Asserted so that a moved range in `Controls.cpp` cannot turn this into a measurement of the gain |
@@ -354,6 +357,18 @@ fail loudly rather than quietly measuring something else.
 
 **Nothing in this repo sums over pixels**, which is the usual way a check ends
 up depending on the raster without saying so.
+
+**And one the audit missed, found by the first CI run (2026-09-23).** Row 10
+claimed the 10× and 100× patches bitwise equal, and argued every downstream
+operation exact "with or without FMA contraction". The argument treated
+`mix( src, sig, 1 )` as `src*0 + sig*1`. GitHub's macOS runner has no GPU, the
+harness falls back to Apple's software renderer there, and it evaluates `mix` as
+`src + (sig − src)*1` — so the 100× patch, whose source is 1.0, read
+0.115470052 against the capacity's 0.115470044. The step was
+`continue-on-error`, so the run was green with `--capacity` failed and the two
+checks after it never run. The model was right; the check assumed an
+implementation of `mix` the specification does not promise. Tolerance now
+derived from that; CI now runs all five checks as a gate.
 
 ---
 
@@ -474,11 +489,12 @@ renderer, GL `4.1 Metal - 90.5`):**
   website's `projects.json`; registering it and re-running both syncs is the
   fix. `guide` is deliberately `""` because no user guide exists, and the About
   block leaves out a button whose link would 404.
-- **CI cannot run the physics.** See "Why the model is GLSL and not C++" above.
-  The workflow builds, lists the parameters and compiles every shader — all of
-  which need no GPU — and attempts the five checks with `continue-on-error`,
-  because whether a hosted runner can make a 4.1 core context is a fact about
-  the runner. `tools/verify.sh` on a machine with a GPU is the gate.
+- **CI runs the physics on a software renderer, not a GPU.** The workflow
+  builds, lists the parameters, compiles every shader through glslc, and runs
+  all five numeric checks on the runner's Apple software renderer as a gate.
+  That proves the tolerances hold on a second rasteriser; it proves nothing
+  about speed, and `tools/verify.sh` on a machine with a GPU is still the full
+  gate (sweep, bench, universal build, oxbow).
 
 ---
 

@@ -42,9 +42,10 @@ are set by value (`Type=2` is Vidicon, not the second row of the dropdown).
 - No dead controls: `python3 tools/sweep.py` (`--size WxH`, `--jobs N`)
 - Render cost: `./build/pbtest --bench`
 
-**Every one of those needs a GPU**, because the model lives in GLSL rather than
-in C++. `--list` does not, and is answered before a context is created, which
-is what lets CI run it on a runner with no GL at all. See AGENTS.md.
+**Every one of those needs a GL 4.1 context**, because the model lives in GLSL
+rather than in C++. A GPU-less CI runner still gets one from Apple's software
+renderer, and CI runs the five physics checks there. `--list` needs no context
+at all. See AGENTS.md.
 
 ## Notes
 - **Nothing is drawn.** Lag, comet tails, blocked highlights and burn-in are

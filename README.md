@@ -162,9 +162,10 @@ time constants are faster than a real tube's so the effect can be shown in a
 take, and the halation is two Gaussians rather than a measured point-spread
 function. `Field Mode` models the scan cadence, not an interlaced signal — the
 output is progressive, and interlace *on a display* is deliberately
-old-cathode's. CI builds the plugin and compiles every shader but cannot run
-the physics, because the model lives in GLSL and a hosted runner has no GPU;
-`tools/verify.sh` on a machine with one is the gate. See
+old-cathode's. CI builds the plugin, compiles every shader and runs the five
+physics checks on a GPU-less runner's software renderer — the first run there
+caught a tolerance this Mac's GPU had hidden; `tools/verify.sh` on a machine
+with a GPU is the full gate. See
 [AGENTS.md](AGENTS.md) for the full list of what is assumed rather than
 measured, for the traps, and for a line-by-line account of where every
 tolerance in the harness comes from.
