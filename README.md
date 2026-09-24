@@ -204,7 +204,7 @@ float's epsilon at 1.0, so in 16F it would simply never start. Stack this on
 four 4K layers and you will notice.
 
 **Not done:** never loaded into Resolume on macOS; the universal build has
-never run on an Intel Mac; no OpenFX port and no browser demo. The
+never run on an Intel Mac; no OpenFX port. The
 Windows x64 DLL is compiled with MSVC by `release.yml` on GitHub. The
 tube-type constants are judged rather than taken off a data sheet, the burn
 time constants are faster than a real tube's so the effect can be shown in a
@@ -218,6 +218,17 @@ with a GPU is the full gate. See
 [AGENTS.md](AGENTS.md) for the full list of what is assumed rather than
 measured, for the traps, and for a line-by-line account of where every
 tolerance in the harness comes from.
+
+**Browser demo:** [plumbicon-demo.stoatworks-labs.com](https://plumbicon-demo.stoatworks-labs.com)
+runs the plugin's own shaders — `targetField()` in all four passes that use it,
+assembled in the plugin's order — ported to WebGL2, and
+`demo/tools/check_shaders.py` holds that GLSL and its assembly
+character-for-character against `source/Shaders.cpp` (`tools/verify.sh` runs it).
+The control conversions, the tube table and the frame sequence beside them are a
+hand translation that nothing checks but a reader. A field there is one frame of
+the page, so tails are as long in seconds as your display's refresh rate makes
+them. It needs `EXT_color_buffer_float` for the RGBA32F target and refuses to
+start without it.
 
 ## Build
 

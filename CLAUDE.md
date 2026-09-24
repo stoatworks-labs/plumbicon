@@ -112,10 +112,19 @@ half-float's epsilon at 1.0, so in 16F it would never start.
   rendered and measured offline against the real plugin class in a headless GL
   context, plus one load through `oxbow`. On Windows, a CI build passed Resolume Arena 7.27.1's gate on llvmpipe on 2026-09-23 (8 of 9 checks; Recovery and Burn Rate read dead on the gate's still picture — see README Status).
 - The universal build has never run on an Intel Mac.
-- No OpenFX port, no browser demo, no video. The Windows x64 DLL is compiled
+- No OpenFX port. The Windows x64 DLL is compiled
   with MSVC by `release.yml` on GitHub; render cost figures are macOS-only.
 - No factory presets beyond `Type`, which is an override rather than the
   fleet's copy-based preset mechanism.
+
+## Browser demo
+
+`demo/` is the page at **plumbicon-demo.stoatworks-labs.com**: the plugin's own
+shaders, copied across unedited and assembled as `Shaders.cpp` assembles them,
+plus a hand port of `Controls.cpp`, `Tubes.h`, `Effective()` and the frame
+sequence. Run `python3 demo/tools/check_shaders.py` after touching any shader —
+verify.sh fails on drift — and copy the C++ across rather than editing
+`plugin.js` by hand. built on the shared kit in `infrastructure/stoatworks-backend/resolume-demo/`, vendored into `demo/vendor/` by its `sync.sh` — fix a kit bug THERE, never here. There is no build step: `cf-run npx wrangler deploy` from the repo root uploads `demo/` as it stands, and the page is verified by content (its `<title>`), never by status code. `AGENTS.md` has what the page leaves out and why.
 
 ## Diagnostics
 

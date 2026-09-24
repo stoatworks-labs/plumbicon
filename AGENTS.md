@@ -488,10 +488,10 @@ renderer, GL `4.1 Metal - 90.5`):**
   rendered frame. A real camera does exactly that; it is still worth knowing.
 - **`SetTime` is accepted and inert**, and the harness drives it anyway,
   because a host does and the plugin should be exercised the way a host does.
-- **No OpenFX port and no browser demo**, neither required for 0.1.0. A demo
-  would be a good fit here — the whole model is one shader — but the state
-  buffers are RGBA32F and WebGL2 needs `EXT_color_buffer_float` for that, which
-  is worth checking before promising it.
+- **No OpenFX port**, not required for 0.1.0. The browser demo followed the
+  release on 2026-09-24, and the float question above had a short answer:
+  `EXT_color_buffer_float` is the only extension it needs. See "The browser
+  demo" at the end of this file.
 - **No factory presets** beyond `Type`. The fleet's copy-based preset mechanism
   carries a host-echo trap (reported against vertigo as its issue #2) that
   deserves its own pass rather than being copied in at the end of a build; the
@@ -561,3 +561,64 @@ and the trap list come from **tinsel**; the harness, sweep and verify shape
 from **galvo**; the persistent-buffer plumbing and the clock discussion from
 **afterglow**; the override-not-a-write preset pattern from **graticule**. The
 display half of the chain is **old-cathode**, and it is deliberately not here.
+
+## The browser demo
+
+`demo/` is the page at **plumbicon-demo.stoatworks-labs.com**, built on the shared kit in `infrastructure/stoatworks-backend/resolume-demo/`, vendored into `demo/vendor/` by its `sync.sh` — fix a kit bug THERE, never here. There is no build step: `cf-run npx wrangler deploy` from the repo root uploads `demo/` as it stands, and the page is verified by content (its `<title>`), never by status code.
+
+**What is the plugin's own code.** `kVertexShader`, `kTargetLibrarySource`, the
+four preambles and mains, and `kBlurShader`, copied into `demo/plugin.js`
+character for character and assembled exactly as `TargetShaderSource()`,
+`HeldShaderSource()`, `BrightShaderSource()` and `CompositeShaderSource()`
+assemble them. `demo/tools/check_shaders.py` compares all eleven pieces AND the
+four assemblies on both sides (pieces that all match in a different order would
+otherwise pass), and `tools/verify.sh` runs it as its `demo` step.
+
+**What is a port, checked by a reader and nothing else.** `Controls.cpp` in full
+with `VideoGain`, the `Tubes.h` table, `Effective()`, and the frame sequence of
+`ProcessOpenGL`: the state and held ping-pong, the field parities, the
+quarter-size bloom and the four blur stages at the 2.2 wide ratio. Cross-checked
+by hand once, on 2026-09-24, and nothing re-runs it: nine conversions and
+`VideoGain` at six slider positions agree with the compiled C++ to one float ULP
+(JavaScript's double `pow` against the C++'s float `pow`), and the exact
+identities `Controls.h` promises — Sensitivity 0.25 → 1.0, Transfer Gamma 0.5 →
+1.0, the nulls of Dark Current, Recovery and Lag Amount — hold bitwise. To redo
+it, slice the `Controls.cpp, ported` block out of `plugin.js` into a `new
+Function` under node and print the same table from a one-file C++ program built
+against `source/Controls.cpp`.
+
+### The float targets, which were the open question
+
+WebGL2 renders into RGBA32F and RGBA16F only through `EXT_color_buffer_float`,
+and that is the whole of the difference. The state and held buffers are sampled
+NEAREST, as in the plugin, so `OES_texture_float_linear` is never involved; the
+16F bloom is filtered LINEAR, which is core in WebGL2 for half floats; and
+nothing blends into a float target, so `EXT_float_blend` is not needed either.
+The 32-bit charge is the same IEEE single in a browser as in GL 4.1. The page
+passes `needFloat` and the kit throws if the extension is missing, rather than
+dropping to RGBA8 — where the burn could never move and the lag recursion would
+stop being exact, a plausible wrong picture rather than an obvious one.
+
+### The decisions, and why
+
+- **A field is one frame of the page, and only a frame the clock advanced.**
+  The plugin advances a field per `ProcessOpenGL`; the page advances one per
+  `frameIndex` change, so moving a slider while paused re-reads the target
+  instead of charging it again. The cost, stated on the page: tails are as long
+  in seconds as the visitor's refresh rate makes them.
+- **Restart empties the target**, burn included. The plugin has no such event;
+  a burn built over a minute would otherwise outlast "from the top".
+- **Type keeps its slot/value split.** The dropdown lists Custom, Image
+  Orthicon, Plumbicon, Saticon, Vidicon (the constructor's display order) and
+  maps the slot to the stored value (0, 4, 1, 3, 2) where `Effective()` reads
+  it. The kit stores the slot, so a "Copy link" URL carries the slot — said on
+  the page. A pinned slider's readout says "(pinned by Type)" and shows the
+  type's value, because the slider itself is inert then.
+- **A status line under the canvas** prints the field count, the tail length
+  (`capacity / beam`) and the level at which the target blocks up, from the same
+  ported conversions. It is arithmetic on uniforms, not a measurement.
+- **No presets.** `Type` is the plugin's own preset mechanism and it is there.
+- **The default clip is Lights on black**, because a comet tail is a highlight
+  that moved, and on a full-contrast frame everything smears at once.
+- **The About block is absent**; its links are in the page header. There is no
+  audio path to leave out.

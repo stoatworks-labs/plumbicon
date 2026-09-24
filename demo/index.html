@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plumbicon — browser demo | Stoatworks Labs</title>
+    <meta name="description" content="Try the Plumbicon camera-tube FFGL plugin for Resolume in your browser: the plugin's own charge-store, halation and composite shaders ported to WebGL2, with lag, comet tails, blocked highlights and burn-in falling out of one store of charge." />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./vendor/kit.css" />
+    <link rel="canonical" href="https://plumbicon-demo.stoatworks-labs.com/" />
+  </head>
+  <body>
+    <main id="demo">
+      <noscript>
+        <p>
+          This demo runs the plugin's shaders in your browser, so it needs
+          JavaScript and WebGL2. The plugin itself, its source and its downloads
+          are on
+          <a href="https://github.com/stoatworks-labs/plumbicon">its repository</a>.
+        </p>
+      </noscript>
+    </main>
+
+    <script type="module" src="./plugin.js"></script>
+    <script
+      src="./vendor/support-footer.js"
+      defer
+      data-app="Plumbicon"
+      data-repo="https://github.com/stoatworks-labs/plumbicon"
+      data-note="A browser demo of the plugin's own shaders. Nothing you load here leaves your machine."
+    ></script>
+  </body>
+</html>
