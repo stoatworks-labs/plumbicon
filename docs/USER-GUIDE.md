@@ -326,7 +326,10 @@ It records the GL vendor and version at load, and which shader failed if one did
 - **The halation is two Gaussians**, chosen as a look, not a measured scattering profile. The
   Halo is drawn, not modelled.
 - **Field Mode is the scan cadence, not interlace.** The output is progressive.
-- **No presets** beyond Type, no OpenFX version and no browser demo.
+- **No presets** beyond Type, and no OpenFX version.
+- **There is a browser demo** at [plumbicon-demo.stoatworks-labs.com](https://plumbicon-demo.stoatworks-labs.com).
+  It is a port to a web page, not the plugin: the shaders run in WebGL2 and any CPU
+  half is rewritten in JavaScript. The page lists what it does not reproduce.
 
 ---
 
