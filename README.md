@@ -1,29 +1,28 @@
 # plumbicon
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
-> (Anthropic), directed and reviewed by a human author. The model is GPU-only
-> and has no C++ mirror, so the central claim is not asserted but measured:
-> `pbtest` drives the real plugin class headlessly and compares what comes back
-> against closed forms — a highlight switched off against the exact discharge
-> recursion, the tail behind a moving one against `v × fields` pixels, a
-> tenfold and a hundredfold over-exposure against each other bit for bit, the
-> burn accumulator against both of its poles over 700 fields. Every one of
-> those runs at two rasters and fails if they disagree, and every tolerance is
-> derived from the arithmetic or from the GLSL specification rather than from
-> what this GPU printed first (see [Status](#status)). It has **never been
-> loaded into Resolume on macOS**; see [Status](#status) for Windows.
+> (Anthropic), directed and reviewed by a human author. The model only runs on
+> the GPU and has no C++ mirror, so `pbtest` drives the real plugin class
+> headlessly and holds what comes back to closed forms: the discharge recursion,
+> a tail of `v × fields` pixels, over-exposures compared bit for bit, and the
+> burn accumulator against both its poles over 700 fields. Each check runs at
+> two rasters and fails if they disagree, and every tolerance comes from the
+> arithmetic or the GLSL specification rather than from whatever this GPU printed
+> first. It's **never been loaded into Resolume on macOS**. The numbers, and how
+> it got on in Arena on Windows, are under [Status](#status).
 
 A camera tube, as an FFGL effect for [Resolume](https://resolume.com) Arena and
-Avenue. Not a filter that adds smear and bloom — a **photoconductive target
-that stores charge**, and an electron beam that reads it by discharging it.
+Avenue. Inside it there's a **photoconductive target that stores charge** and an
+electron beam that reads it by discharging it, and the smear, the comet tails
+and the burn-in all come out of that, with no filter adding them on top.
 
 ![A test card through the plugin: a bright disc dragging a comet tail, a blocked-up white plate with a burn shadow around it, and a blown highlight on the ramp](docs/hero.png)
 
 <sub>The repo's test card through the plugin at its defaults. The tail behind
 the disc, the blue trailing edge on the bar, the white plate with no detail in
-it and the faint rectangle etched around it are not four effects — they are one
-store of charge, seen from four angles. Rendered by `pbtest`, the offline
-harness, not captured from Resolume.</sub>
+it and the faint rectangle etched around it all come from one store of charge,
+seen from four angles. Rendered by `pbtest`, the offline harness, rather than
+captured from Resolume.</sub>
 
 <!-- downloads:start -->
 
@@ -59,88 +58,88 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 
 ## This is the camera, not the screen
 
-Nothing here models a display. There is no phosphor, no ghosting, no vertical
+Nothing here models a display. There's no phosphor, no ghosting, no vertical
 hold, no dot crawl, no shadow mask, no scanline and no tracking error. Those
 all belong to [old-cathode](https://github.com/stoatworks-labs/old-cathode),
 which is a sibling rather than a competitor: put **plumbicon** on the layer and
-**old-cathode** after it and you have the whole chain, camera then monitor.
+**old-cathode** after it and you've got the whole chain, camera then monitor.
 
-Said plainly because it is easy to assume otherwise: if you want the picture to
-look like it is *on* an old television, that is the other plugin. This one is
-what the picture looked like on its way *into* one.
+It's an easy one to mix up, so: if you want the picture to look like it's *on*
+an old television, that's the other plugin. This one is what the picture looked
+like on its way *into* one.
 
 ## The one idea
 
-A camera tube's target stores charge. Light charges it; the beam reads it by
-taking the charge away; **the beam can only take so much per pass.** One
-sentence, one function, about fifteen lines of GLSL. Everything the tube is
-famous for is what is left over:
+A camera tube's target stores charge. Light charges it, the beam reads it by
+taking the charge away, and **the beam can only take so much per pass.** That's
+one sentence, one function, about fifteen lines of GLSL. Everything the tube is
+famous for is what's left over:
 
 - **Lag.** A highlight that charged the target harder than the beam can
-  discharge is still there on the next field, so it is read out again.
+  discharge is still there on the next field, so it gets read out again.
 - **A comet tail.** That residue sits at *every point the highlight has passed
   over*, and a moving highlight has passed over a line of them. **Nothing draws
   a tail.**
-- **Blocked highlights.** The target saturates. Past that, more light is not
-  more charge, so the detail inside a highlight is never stored and cannot be
+- **Blocked highlights.** The target saturates. Past that, more light isn't
+  more charge, so the detail inside a highlight is never stored and can't be
   read back.
 - **Burn-in.** A second, far slower accumulator biases the local sensitivity
   down where the target has been bright, and recovers on a slower pole than it
-  rose on — because a tube etches faster than it recovers.
+  rose on, because a tube etches faster than it recovers.
 
-Three more things fall out that were not aimed at. **A smear changes colour**,
+Three more things fall out that I wasn't aiming for. **A smear changes colour**,
 because the store is per channel: a bluish highlight lags in blue and not in
 red. **Two Fields doubles the tail**, because the beam visits a line every
-other field and it therefore holds its residue twice as long. And **Two Fields
-twitters on motion, and only on motion** — a moving edge is caught at two
-different positions on alternate lines, because those lines were last read one
-field apart, while a static area has no line structure at all. Nothing in the
-code has an opinion about lines except the parity test.
+other field, so it holds its residue twice as long. And **Two Fields twitters
+on motion, and only on motion**: a moving edge is caught at two different
+positions on alternate lines, because those lines were last read one field
+apart, while a static area has no line structure at all. Nothing in the code
+has an opinion about lines except the parity test.
 
-The discipline is the point. If an artefact needs a term of its own to appear,
-the mechanism has been lost somewhere. There is exactly **one** bolted-on term
-in this plugin — the Image Orthicon's black halo, which is a different physical
-mechanism entirely — and it is flagged as such everywhere it appears, including
-in [AGENTS.md](AGENTS.md).
+The rule I've stuck to is that if an artefact needs a term of its own to
+appear, the mechanism has been lost somewhere. There's only **one** bolted-on
+term in this plugin, the Image Orthicon's black halo, which is a different
+physical mechanism entirely, and it's flagged as such everywhere it appears,
+including in [AGENTS.md](AGENTS.md).
 
 ![The same card as an Image Orthicon: a heavy comet tail with a dark ring around every highlight](docs/orthicon.png)
 
 <sub>`Type = Image Orthicon`. The dark ring around the disc, the plate and the
-bar is the halo, and it is the one thing here that is drawn rather than
-derived — an Image Orthicon's halo is redistribution of secondary electrons
+bar is the halo, and it's the one thing here that's drawn rather than
+derived. An Image Orthicon's halo is a redistribution of secondary electrons
 knocked off the target, and nothing in a charge store can produce it.</sub>
 
 ## Be honest about the input
 
 **A real comet tail comes from something a hundred times brighter than peak
-white** — a lamp in shot, a sun glint, a welding arc. A clip has no such thing:
-everything above white was thrown away before this plugin ever saw it.
+white**: a lamp in shot, a sun glint, a welding arc. A clip has no such thing.
+Everything above white was thrown away before this plugin ever saw it.
 
 So `Sensitivity` is the exposure control that pushes the clip's own highlights
 past the point where the beam can keep up, and that costs some headroom in the
-midtones. There is no setting that gives a comet tail on a correctly exposed
-8-bit picture, because there is nothing in one for the tail to come from. The
-defaults are a slightly over-exposed plumbicon for that reason.
+midtones. No setting gives a comet tail on a correctly exposed 8-bit picture,
+because there's nothing in one for the tail to come from. That's why the
+defaults are a slightly over-exposed plumbicon.
 
-Two numbers are worth knowing, because between them they are the whole
+Two numbers are worth knowing, because between them they're the whole
 instrument:
 
 - **`Target Capacity ÷ Beam Current` is the length of the tail**, in fields.
 - **`Beam Current ÷ Sensitivity` is the light level at which the target starts
   blocking up.**
 
-They are independent, which is why both controls exist.
+They're independent, which is why both controls exist.
 
 [![Plumbicon — a tube camera as an effect, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=HQ-j39oUCgE)
 
-*[Watch it](https://www.youtube.com/watch?v=HQ-j39oUCgE) — 49 seconds:
+*[Watch it](https://www.youtube.com/watch?v=HQ-j39oUCgE) (49 seconds):
 highlights lingering as the beam current comes down, comet tails that nothing
 draws, the four tube types, Two Fields doubling the lag, highlights blocking
 up past the target's capacity, and a burn-in left behind when the camera looks
-away. Every frame is the real plugin's output: an FFGL plugin has no window,
-so the footage is rendered by this repository's own offline harness
-(`pbtest --pipe`, driven by a cue sheet) rather than filmed off a screen, and
-the clips are Resolume's bundled demo media.*
+away. It's all the plugin's own output. An FFGL plugin doesn't have a window to
+film, so the footage comes from this repo's offline harness (`pbtest --pipe`,
+driven by a cue sheet) rather than off a screen, and the clips are Resolume's
+bundled demo media.*
 
 ## Controls
 
@@ -155,29 +154,29 @@ the clips are Resolume's bundled demo media.*
 **`Type` pins eight of them.** Plumbicon, Vidicon, Saticon and Image Orthicon
 are the same model with different constants, and while one is selected the
 Transfer Gamma, Dark Current, Target Capacity, Lag Amount, Burn and Halo
-sliders are **inert** — they show a value and do not change the picture. Set
+sliders are **inert**: they show a value and don't change the picture. Set
 `Type = Custom` to drive them yourself; Custom starts from the Plumbicon row,
 so switching to it changes nothing until you move a slider. Sensitivity and
-Beam Current are always live, because those are how a camera is lined up on
+Beam Current are always live, because those are how a camera gets lined up on
 the day rather than what the tube is made of.
 
 **Time is measured in fields, and a field is a rendered frame.** Lag is a field
-figure in every tube data sheet — a 50 Hz and a 60 Hz tube with the same
-third-field lag behave identically per field — so the model counts fields and
-never reads a clock. The consequence is that the look depends on your
-composition's frame rate. So does a real camera.
+figure in every tube data sheet (a 50 Hz and a 60 Hz tube with the same
+third-field lag behave identically per field), so the model counts fields and
+never reads a clock. The upshot is that the look depends on your composition's
+frame rate. So does a real camera's.
 
 **A Transfer Gamma below 1.0 lifts the picture.** A vidicon's really is about
 0.65, and a real chain hands that signal to a display that re-applies about
-2.2. This plugin is the camera; it does not correct for a display it does not
-model. That is what the Vidicon type looks like on its own, and it is why
+2.2. This plugin is the camera, and it doesn't correct for a display it doesn't
+model. That's what the Vidicon type looks like on its own, and it's why
 old-cathode exists.
 
 ## Status
 
 **v0.1.0, built 2026-09-22 and released 2026-09-23, and
-honestly early.** Verified by measurement on an M4 Max, macOS 26.4. Never
-loaded into Resolume on macOS. On Windows it has: a CI build of the v0.1.0 source went through the fleet's Arena gate on 2026-09-23 (Resolume Arena 7.27.1 on win-lab, Mesa llvmpipe, no GPU). It loads from Extra Effects, registers as `SW Plumbicon` / `PB01` / effect, all 25 host parameters (Arena's Opacity plus these 24) match the declaration in name, order, type, range and default, it renders, and Arena's log stays clean. 18 of the 20 controls the gate probes measurably moved the picture; **Recovery and Burn Rate read as dead**, because the gate holds a still picture for about a second after each change and those two only act on motion and over many fields — the harness sweep proves both live over 40 and 90 fields. That is the gate's blind spot, not the plugin's. It says nothing about speed or a real GPU.
+still early days.** Verified by measurement on an M4 Max, macOS 26.4. Never
+loaded into Resolume on macOS. On Windows it has been: a CI build of the v0.1.0 source went through the fleet's Arena gate on 2026-09-23 (Resolume Arena 7.27.1 on win-lab, Mesa llvmpipe, no GPU). It loads from Extra Effects, registers as `SW Plumbicon` / `PB01` / effect, all 25 host parameters (Arena's Opacity plus these 24) match the declaration in name, order, type, range and default, it renders, and Arena's log stays clean. 18 of the 20 controls the gate probes measurably moved the picture. **Recovery and Burn Rate read as dead**, because the gate holds a still picture for about a second after each change and those two only act on motion and over many fields; the harness sweep proves both live over 40 and 90 fields. That's a blind spot in the gate rather than a fault in the plugin. It says nothing about speed or a real GPU.
 
 User guide: [docs/USER-GUIDE.md](docs/USER-GUIDE.md), also at
 https://stoatworks-labs.com/software/plumbicon/guide/
@@ -198,10 +197,10 @@ https://stoatworks-labs.com/software/plumbicon/guide/
 
 **The memory is the headline, not the time.** The target is two picture-sized
 **RGBA32F** buffers: 28 MB at 720p, 63 MB at 1080p, and **253 MB at 4K**.
-`Field Mode = Two Fields` doubles it. 32F is not caution — the burn accumulator
-moves by 1e-5 of its range per field, an order of magnitude below a half
-float's epsilon at 1.0, so in 16F it would simply never start. Stack this on
-four 4K layers and you will notice.
+`Field Mode = Two Fields` doubles it. 32F isn't me being cautious: the burn
+accumulator moves by 1e-5 of its range per field, an order of magnitude below a
+half float's epsilon at 1.0, so in 16F it would never start at all. Stack this
+on four 4K layers and you'll notice.
 
 **Not done:** never loaded into Resolume on macOS; the universal build has
 never run on an Intel Mac; no OpenFX port. The
@@ -209,26 +208,26 @@ Windows x64 DLL is compiled with MSVC by `release.yml` on GitHub. The
 tube-type constants are judged rather than taken off a data sheet, the burn
 time constants are faster than a real tube's so the effect can be shown in a
 take, and the halation is two Gaussians rather than a measured point-spread
-function. `Field Mode` models the scan cadence, not an interlaced signal — the
-output is progressive, and interlace *on a display* is deliberately
-old-cathode's. CI (`ci.yml`, on GitHub's macOS runner) builds the plugin,
-compiles every shader and runs the five physics checks on a GPU-less runner's software renderer — the first run there
-caught a tolerance this Mac's GPU had hidden; `tools/verify.sh` on a machine
-with a GPU is the full gate. See
-[AGENTS.md](AGENTS.md) for the full list of what is assumed rather than
+function. `Field Mode` models the scan cadence, not an interlaced signal: the
+output is progressive, and interlace *on a display* is left to old-cathode on
+purpose. CI (`ci.yml`, on GitHub's macOS runner) builds the plugin, compiles
+every shader and runs the five physics checks on a GPU-less runner's software
+renderer (the first run there caught a tolerance this Mac's GPU had hidden);
+`tools/verify.sh` on a machine with a GPU is the full gate. See
+[AGENTS.md](AGENTS.md) for the full list of what's assumed rather than
 measured, for the traps, and for a line-by-line account of where every
 tolerance in the harness comes from.
 
 **Browser demo:** [plumbicon-demo.stoatworks-labs.com](https://plumbicon-demo.stoatworks-labs.com)
-runs the plugin's own shaders — `targetField()` in all four passes that use it,
-assembled in the plugin's order — ported to WebGL2, and
+runs the plugin's own shaders (`targetField()` in all four passes that use it,
+assembled in the plugin's order) ported to WebGL2, and
 `demo/tools/check_shaders.py` holds that GLSL and its assembly
 character-for-character against `source/Shaders.cpp` (`tools/verify.sh` runs it).
 The control conversions, the tube table and the frame sequence beside them are a
 hand translation that nothing checks but a reader. A field there is one frame of
 the page, so tails are as long in seconds as your display's refresh rate makes
-them. It needs `EXT_color_buffer_float` for the RGBA32F target and refuses to
-start without it.
+them. It needs `EXT_color_buffer_float` for the RGBA32F target and won't start
+without it.
 
 ## Build
 
